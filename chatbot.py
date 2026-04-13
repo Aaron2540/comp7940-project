@@ -1,5 +1,8 @@
 import logging
+import os
 import time
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
 from telegram import Update
 from telegram.ext import (
@@ -9,6 +12,22 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
+
+
+# simple http server to keep Render happy (free tier needs a listening port)
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"OK")
+    def log_message(self, format, *args):
+        pass
+
+def start_health_server():
+    port = int(os.getenv("PORT", "10000"))
+    server = HTTPServer(("0.0.0.0", port), HealthHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
 
 import config
 import db
@@ -348,6 +367,7 @@ def main() -> None:
 
     logger.info("Starting Campus Assistant Bot...")
     logger.info("LLM Model: %s | Base URL: %s", config.LLM_MODEL, config.LLM_BASE_URL)
+    start_health_server()
 
     app = ApplicationBuilder().token(config.TELEGRAM_TOKEN).build()
 
