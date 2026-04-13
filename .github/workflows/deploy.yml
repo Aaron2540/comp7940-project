@@ -1,0 +1,32 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Lint check
+        run: pip install flake8 && flake8 --max-line-length=120 --ignore=E501 *.py
+
+      - name: Build Docker image
+        run: docker build -t campus-assistant-bot .
+
+      - name: Docker image test
+        run: docker run --rm campus-assistant-bot python -c "import chatbot; print('Import OK')"
