@@ -4,6 +4,10 @@ import time
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
+import config
+import db
+import llm
+
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
@@ -14,14 +18,17 @@ from telegram.ext import (
 )
 
 
-# simple http server to keep Render happy (free tier needs a listening port)
 class HealthHandler(BaseHTTPRequestHandler):
+    """Simple HTTP handler so Render free tier sees a listening port."""
+
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
         self.wfile.write(b"OK")
+
     def log_message(self, format, *args):
         pass
+
 
 def start_health_server():
     port = int(os.getenv("PORT", "10000"))
@@ -29,9 +36,6 @@ def start_health_server():
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
 
-import config
-import db
-import llm
 
 logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -122,7 +126,10 @@ async def list_todos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     todos = db.get_todos(user.id)
 
     if not todos:
-        await update.message.reply_text("📭 No tasks yet! Use `/add` to create one.", parse_mode="Markdown")
+        await update.message.reply_text(
+            "📭 No tasks yet! Use `/add` to create one.",
+            parse_mode="Markdown",
+        )
         return
 
     lines = ["📋 *Your Tasks:*\n"]
@@ -191,12 +198,12 @@ async def events(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         lines.append(
             f"📅 *{e['title']}*\n"
             f"   Date: {e['date']} | 📍 {e['location']}\n"
-            f"   Category: #{e['category']}\n"
+            "   Category: #" + e['category'] + "\n"
         )
 
     if not category:
         categories = ", ".join(db.get_event_categories())
-        lines.append(f"_Filter by category: `/events <category>`_")
+        lines.append("_Filter by category:_ `/events <category>`")
         lines.append(f"_Categories: {categories}_")
 
     await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
@@ -225,7 +232,7 @@ async def set_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     db.set_profile(user.id, user.username or user.first_name, interests, courses)
 
     await update.message.reply_text(
-        f"👤 *Profile Updated!*\n\n"
+        "👤 *Profile Updated!*\n\n"
         f"🎯 Interests: {', '.join(interests)}\n"
         f"📚 Courses: {', '.join(courses) if courses else 'None set'}\n\n"
         "Use `/match` to find study buddies!",
@@ -245,7 +252,7 @@ async def my_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         return
 
     await update.message.reply_text(
-        f"👤 *Your Profile*\n\n"
+        "👤 *Your Profile*\n\n"
         f"🎯 Interests: {', '.join(profile.get('interests', []))}\n"
         f"📚 Courses: {', '.join(profile.get('courses', []))}\n"
         f"📅 Updated: {profile.get('updated', 'N/A')[:10]}",
@@ -318,10 +325,10 @@ async def health(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     redis_ok = db.health_check()
     status = "✅ All systems operational" if redis_ok else "❌ Redis connection failed"
     await update.message.reply_text(
-        f"🏥 *Health Check*\n\n"
+        "🏥 *Health Check*\n\n"
         f"• Redis: {'✅ Connected' if redis_ok else '❌ Disconnected'}\n"
         f"• LLM: ✅ {config.LLM_MODEL}\n"
-        f"• Bot: ✅ Running\n\n"
+        "• Bot: ✅ Running\n\n"
         f"Status: {status}",
         parse_mode="Markdown",
     )
@@ -352,7 +359,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     # telegram has a 4096 char limit per message
     if len(reply) > 4096:
         for i in range(0, len(reply), 4096):
-            await update.message.reply_text(reply[i : i + 4096])
+            await update.message.reply_text(reply[i:i + 4096])
     else:
         await update.message.reply_text(reply)
 

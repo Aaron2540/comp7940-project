@@ -29,8 +29,8 @@ def chat(history: list[dict], user_message: str) -> str:
             max_tokens=1024, temperature=0.7,
         )
         reply = resp.choices[0].message.content.strip()
-        logger.info("LLM response: model=%s, tokens=%s",
-                     config.LLM_MODEL, resp.usage.total_tokens if resp.usage else "N/A")
+        tokens = resp.usage.total_tokens if resp.usage else "N/A"
+        logger.info("LLM response: model=%s, tokens=%s", config.LLM_MODEL, tokens)
         return reply
     except Exception as e:
         logger.exception("LLM API call failed")
